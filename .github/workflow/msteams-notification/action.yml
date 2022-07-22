@@ -1,0 +1,34 @@
+name: "MS Teams Incoming Webhook Notification"
+description: "GitHub Action to send an MS Teams notification via Incoming Webhook"
+author: 'Bhargavi Vengampalli'
+
+inputs:
+  MSTEAMS_WEBHOOK:
+    description: "MS Teams Webhook URL"
+    required: true
+  
+  MSTEAMS_MESSAGE:
+    description: "MS Teams message"
+    required: true  
+    
+  THEME_COLOR:
+    description: "MS Teams color"
+    required: true  
+    
+runs:
+  using: 'composite'
+  steps:
+    - run: |
+        echo $MSTEAMS_MESSAGE
+        echo $THEME_COLOR        
+        long_sha=${GITHUB_SHA}
+        echo $long_sha        
+        commit_sha=${long_sha::6}
+        echo $commit_sha
+        cat << EOF > message.json
+        {"@type":"MessageCard","@context":"https://schema.org/extensions","summary":"Pipeline Success!","themeColor": "$THEME_COLOR","title":"$MSTEAMS_MESSAGE","sections":[{"facts":[{"name":"Repository:","value":"$GITHUB_REPOSITORY"},{"name":"Branch:","value": "${{ github.ref }}" },
+        {"name": "Event","value": "${{ github.event_name }} "},{"name":"Commit:","value":"[${commit_sha}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA)"},{"name":"Actions URL","value":"[${{ github.workflow }}]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA/checks)"},{"name": "Triggered By","value": "${{ github.actor }}"}]}],"potentialAction":[{"@type":"OpenUri","name":"View on GitHub",
+        "targets":[{"os":"default","uri":"${{ github.event.workflow_run.html_url }}"}]}]}
+        EOF
+        curl -X POST $MSTEAMS_WEBHOOK --header 'Content-Type: application/json' -d @message.json
+      shell: bash
